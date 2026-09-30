@@ -473,10 +473,10 @@ async function createServer({
                 eraseKeyFromUrl();
               });
             }
-            window.addEventListener('pagehide', () => {
-              eraseKeyFromUrl();
-              URL.revokeObjectURL(url);
-            }, { once: true });
+            // Don't revoke the blob URL here: if the page is restored from
+            // the back-forward cache the Save button must still work. The
+            // URL is released when the document is discarded.
+            window.addEventListener('pagehide', eraseKeyFromUrl);
           }
 
             if (${isClipboard}) {

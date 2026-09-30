@@ -62,8 +62,8 @@ test('Server Core', async (t) => {
 
     assert.ok(body.includes('id="saveBtn"'), 'manual Save button is rendered');
     assert.ok(body.includes("addEventListener('pagehide'"), 'key is erased on pagehide');
-    assert.ok(!/a\.click\(\);\s*document\.body\.removeChild\(a\);\s*URL\.revokeObjectURL/.test(body),
-      'blob URL is not revoked right after the automatic click');
+    assert.ok(!body.includes('URL.revokeObjectURL(url)'),
+      'blob URL stays valid so Save file works, including after a bfcache restore');
 
     await shutdown();
   });
