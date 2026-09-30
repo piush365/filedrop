@@ -127,6 +127,7 @@ function resetSession() {
 
 function abortActiveAnnounce() {
   if (session.activeAnnounce && !session.activeAnnounce.settled) {
+    if (session.activeAnnounce.clearTimer) session.activeAnnounce.clearTimer();
     session.activeAnnounce.settled = true;
     session.activeAnnounce.resolve({ name: '', mdnsAvailable: false });
   }
@@ -268,6 +269,9 @@ async function announce(config) {
       winTimeout = setTimeout(() => {
         handleError(new Error('Windows registration timeout'));
       }, mdnsTimeout);
+      // An abandoned announce (deregister() or a newer announce()) must not
+      // leave a long configurable timer keeping the process alive.
+      announceHandle.clearTimer = () => clearTimeout(winTimeout);
     }
 
     let baseServiceName = config.mdnsName || config.mdnsNameOverride || generateBaseName(config.filename);

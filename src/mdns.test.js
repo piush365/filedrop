@@ -173,3 +173,47 @@ test('Windows registration timeout respects a configurable config.mdnsTimeout', 
 
   await mdns.deregister();
 });
+
+test('abandoning a Windows announce clears its registration timer', async (t) => {
+  t.mock.method(os, 'platform', () => 'win32');
+
+  const { mdns, restore } = loadMdnsWithMock(() => {
+    const instance = new EventEmitter();
+    instance.query = () => {};
+    instance.respond = (_packet, callback) => {
+      callback();
+    };
+    instance.destroy = () => {};
+    return instance;
+  });
+  t.after(restore);
+
+  const HUGE = 2147483647;
+  const timers = new Set();
+  const realSetTimeout = global.setTimeout;
+  const realClearTimeout = global.clearTimeout;
+  t.mock.method(global, 'setTimeout', (fn, ms, ...args) => {
+    const id = realSetTimeout(fn, ms, ...args);
+    if (ms === HUGE) timers.add(id);
+    return id;
+  });
+  t.mock.method(global, 'clearTimeout', (id) => {
+    timers.delete(id);
+    return realClearTimeout(id);
+  });
+
+  const pending = mdns.announce({
+    filename: 'sample.txt',
+    ip: '127.0.0.1',
+    port: 4321,
+    size: 12,
+    transferId: 'test-transfer-abandon',
+    mdnsName: 'sample-filedrop',
+    mdnsTimeout: HUGE
+  });
+  assert.strictEqual(timers.size, 1, 'registration timer was scheduled');
+
+  await mdns.deregister();
+  assert.deepStrictEqual(await pending, { name: '', mdnsAvailable: false });
+  assert.strictEqual(timers.size, 0, 'registration timer was cleared');
+});
